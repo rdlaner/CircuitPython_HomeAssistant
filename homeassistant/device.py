@@ -1,4 +1,3 @@
-import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import binascii
 import json
 import microcontroller
@@ -13,11 +12,11 @@ from sys import platform
 class HomeAssistantDevice():
     def __init__(self, device_name: str,
                  model: str,
-                 mqtt_client: MQTT.MQTT,
+                 network_send_fxn, # Callable,
                  debug: bool = False) -> None:
         self.device_name = device_name
         self.model = model
-        self.mqtt_client = mqtt_client
+        self.network_send_fxn = network_send_fxn
         self.debug = debug
         self.mf = platform
         self.device_id = f"{self.model}-{binascii.hexlify(microcontroller.cpu.uid).decode()}"
@@ -94,7 +93,7 @@ class HomeAssistantDevice():
             print(f"Publishing to {topic}:")
             print(f"{json.dumps(msg)}")
 
-        self.mqtt_client.publish(topic, json.dumps(msg), retain=True, qos=1)
+        self.network_send_fxn(msg=json.dumps(msg), topic=topic, retain=True, qos=1)
 
     def publish_sensors(self) -> None:
         """Publish all cached sensor data"""
@@ -105,7 +104,7 @@ class HomeAssistantDevice():
                 print(f"Publishing to {topic}:")
                 print(f"{json.dumps(msg)}")
 
-            self.mqtt_client.publish(topic, json.dumps(msg), retain=True, qos=1)
+            self.network_send_fxn(msg=json.dumps(msg), topic=topic, retain=True, qos=1)
 
         self.sensor_data_cache = []
 
@@ -132,13 +131,17 @@ class HomeAssistantDevice():
                 print(f"Discovery topic: {sensor.discovery_topic}")
                 print(f"Discovery msg:\n{json.dumps(sensor.discovery_info)}")
 
-            self.mqtt_client.publish(
-                sensor.discovery_topic, json.dumps(sensor.discovery_info), retain=True, qos=1)
+            self.network_send_fxn(msg=json.dumps(sensor.discovery_info),
+                                  topic=sensor.discovery_topic,
+                                  retain=True,
+                                  qos=1)
 
         for number in self.numbers:
             if self.debug:
                 print(f"Discovery topic: {number.discovery_topic}")
                 print(f"Discovery msg:\n{json.dumps(number.discovery_info)}")
 
-            self.mqtt_client.publish(
-                number.discovery_topic, json.dumps(number.discovery_info), retain=True, qos=1)
+            self.network_send_fxn(msg=json.dumps(number.discovery_info),
+                                  topic=number.discovery_topic,
+                                  retain=True,
+                                  qos=1)
